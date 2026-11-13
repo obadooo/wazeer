@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700&family=Readex+Pro:wght@500;700&family=Almarai:wght@400;700&family=Cairo:wght@500;700&family=Changa:wght@500;700&family=IBM+Plex+Sans+Arabic:wght@500;700&family=Kufam:wght@500;700&family=Lemonada:wght@500;700&family=Reem+Kufi:wght@500;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&amp;family=Tajawal:wght@400;500;700;800&amp;display=swap" rel="stylesheet">
 <style>
-:root{--bg:#eef3f2;--card:#fff;--tx:#143533;--mut:#6b8280;--pr:#0b8f7e;--pr2:#066a5f;--ln:#dce8e6;--gold:#f5b800;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#eef3f2;--card:#fff;--tx:#143533;--mut:#6b8280;--pr:#0b8f7e;--pr2:#066a5f;--ln:#dce8e6;--gold:#f5b800;box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b1a;--card:#162826;--tx:#e6f2f0;--mut:#8fb0ab;--ln:#244240}}
 *{box-sizing:border-box;scrollbar-width:none;-ms-overflow-style:none}*::-webkit-scrollbar{display:none;width:0;height:0}html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:Tajawal,Tahoma,sans-serif}
@@ -143,6 +143,15 @@ input[type=number]{width:80px}
 [data-theme=dark] .modes button.on{color:#066a5f}[data-theme=dark] .warn{background:#4a3b0a;color:#ffe9a8}
 .tg.fs{left:auto;right:12px;top:12px;z-index:6}
 @media(max-width:560px){header{padding-top:84px}}
+/* شريط الحالة في الآيباد والآيفون: الترويسة تمتد تحته بدل الشريط الأبيض */
+header{padding-top:calc(28px + env(safe-area-inset-top,0px))}
+header .tg{top:calc(12px + env(safe-area-inset-top,0px))}
+header .sync-pill{margin-top:env(safe-area-inset-top,0px)}
+@media(max-width:560px){header{padding-top:calc(84px + env(safe-area-inset-top,0px))}}
+/* ملء الشاشة على الأجهزة اللمسية: زر الخروج (X) من النظام نفسه، فنخفي زرّنا حتى لا يتداخلا */
+@media(pointer:coarse){:fullscreen #fsb,:-webkit-full-screen #fsb{display:none!important}}
+#fzc{position:fixed;left:14px;bottom:14px;z-index:170;display:none;gap:4px;align-items:center;background:var(--card);border:1px solid var(--ln);border-radius:99px;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+#fzc button{border:0;background:var(--bg);color:var(--tx);font:inherit;font-weight:800;font-size:15px;min-width:36px;height:34px;border-radius:99px;cursor:pointer;padding:0 8px}
 /* ===== الآيباد والجوال بالعرض: خانات متساوية تملأ الأسطر ===== */
 @media(min-width:601px) and (max-width:1100px){
  .tabs{gap:7px}
@@ -153,7 +162,7 @@ input[type=number]{width:80px}
 /* ===== الجوال: أبعاد وحدود مرتبة ===== */
 @media(max-width:600px){
  main{padding:10px 10px 16px}
- header{padding:88px 12px 18px;border-radius:0 0 26px 26px}
+ header{padding:calc(88px + env(safe-area-inset-top,0px)) 12px 18px;border-radius:0 0 26px 26px}
  header h1{font-size:31px}header p{font-size:13px;margin-top:4px}
  .modes{margin-top:12px}.modes button{padding:8px 22px}
  .card{padding:14px 12px;border-radius:18px;margin-bottom:12px}
@@ -1192,7 +1201,20 @@ function toggleFs(){const d=document,r=d.documentElement;
  else toast('متصفحك لا يدعم ملء الشاشة')}catch(e){toast('تعذّر ملء الشاشة')}}
 function ensureFs(){let b=$('fsb');const hd=document.querySelector('header');if(!b&&hd){b=document.createElement('button');b.className='tg fs noprint';b.id='fsb';b.setAttribute('onclick','toggleFs()');b.title='ملء الشاشة (للخروج اضغط ESC)';b.textContent='⛶';hd.insertBefore(b,hd.firstChild)}if(b){b.style.display='block';b.style.visibility='visible';b.hidden=false}}
 function fsUi(){const b=$('fsb');if(b){const on=!!fsEl();b.textContent=on?'🗗':'⛶';b.title=on?'تصغير الشاشة (أو اضغط ESC)':'ملء الشاشة (للخروج اضغط ESC)'}}
+/* التكبير والتصغير (زووم) أثناء ملء الشاشة: بعض المتصفحات تعطّل زووم المتصفح في ملء الشاشة، فيتولاه الموقع بنفسه */
+/* الزووم لا يُحفظ: يرجع للحجم الطبيعي عند الخروج من ملء الشاشة أو عند تغيير حجم النافذة */
+let FZ=1,FZV=null;
+function fzApply(){const on=!!fsEl();if(!on)FZ=1;FZV=[innerWidth,innerHeight];document.body.style.zoom=on&&FZ!==1?String(FZ):'';let c=$('fzc');
+ if(on&&!c){c=document.createElement('div');c.id='fzc';c.className='noprint';c.innerHTML='<button onclick="fzSet(FZ-0.1)" title="تصغير (Ctrl −)">−</button><button id="fzv" onclick="fzSet(1)" title="الحجم الأصلي (Ctrl 0)"></button><button onclick="fzSet(FZ+0.1)" title="تكبير (Ctrl +)">+</button>';document.body.appendChild(c)}
+ if(c){c.style.display=on?'flex':'none';c.style.zoom=on&&FZ!==1?String(1/FZ):'';const v=$('fzv');if(v)v.textContent=Math.round(FZ*100)+'%'}
+ setTimeout(()=>{try{window.dispatchEvent(new Event('resize'));if($('whc')&&!WH.spin)whDraw(WH.rot)}catch(e){}},60)}
+function fzSet(z){FZ=Math.round(Math.min(2.5,Math.max(0.5,z))*10)/10;fzApply()}
+window.addEventListener('resize',e=>{if(!e.isTrusted||FZ===1||!FZV)return;if(Math.abs(innerWidth-FZV[0])>40||Math.abs(innerHeight-FZV[1])>40)fzSet(1)});
+document.addEventListener('keydown',e=>{if(!fsEl()||!(e.ctrlKey||e.metaKey))return;const k=e.key;
+ if(k==='='||k==='+'||e.code==='NumpadAdd'){e.preventDefault();fzSet(FZ+0.1)}else if(k==='-'||k==='_'||e.code==='NumpadSubtract'){e.preventDefault();fzSet(FZ-0.1)}else if(k==='0'||e.code==='Numpad0'){e.preventDefault();fzSet(1)}},true);
+document.addEventListener('wheel',e=>{if(!fsEl()||!e.ctrlKey)return;e.preventDefault();fzSet(FZ+(e.deltaY<0?0.1:-0.1))},{passive:false,capture:true});
 document.addEventListener('fullscreenchange',fsUi);document.addEventListener('webkitfullscreenchange',fsUi);
+document.addEventListener('fullscreenchange',fzApply);document.addEventListener('webkitfullscreenchange',fzApply);
 function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';setTheme(t);try{localStorage.setItem('wzth',t)}catch(e){}}
 function setTheme(t){document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=$('tg');if(b)b.textContent=t==='dark'?'☀️':'🌙'}
 function podTg(el){const pc=el.closest('.pc'),on=!el.classList.contains('on');(pc&&pc.classList.contains('tie')?pc.querySelectorAll('.sn'):[el]).forEach(x=>x.classList.toggle('on',on));if(on)popConfetti()}
@@ -1273,7 +1295,12 @@ function pIniW(){const a=S.set.pIniW;return Array.isArray(a)?a:[curW()]}
 function setPIniW(w,on){let a=pIniW().filter(x=>x!==w);if(on)a.push(w);S.set.pIniW=a.sort((x,y)=>x-y);save();render()}
 /* الجوال والآيباد: تثبيت عرض الصفحة على عرض A4 أثناء الطباعة ليطابق حجم الطباعة من اللابتوب */
 function pvA4(on){const m=document.querySelector('meta[name=viewport]');if(!m)return;if(on){if(m.dataset.o===undefined)m.dataset.o=m.getAttribute('content');m.setAttribute('content','width=794, initial-scale=1, viewport-fit=cover')}else if(m.dataset.o!==undefined){m.setAttribute('content',m.dataset.o);delete m.dataset.o}}
-function goPrint(done){pvA4(1);let fin=()=>{removeEventListener('afterprint',fin);fin=()=>{};pvA4(0);if(done)done()};addEventListener('afterprint',fin);setTimeout(()=>{window.print();},350)}
+function goPrint(done){pvA4(1);let fin=()=>{removeEventListener('afterprint',fin);fin=()=>{};pvA4(0);if(done)done()};addEventListener('afterprint',fin);setTimeout(()=>{window.print();
+ /* الآيباد والآيفون لا يرسلان دائماً حدث انتهاء الطباعة: أول لمسة بعد الطباعة ترجع عرض الصفحة الطبيعي */
+ setTimeout(()=>{const f=()=>{removeEventListener('pointerdown',f,true);fin()};addEventListener('pointerdown',f,true)},1500)},350)}
+/* عند تدوير الجهاز (طول/عرض) أعد ضبط مقياس الصفحة حتى لا تبقى مكبّرة أو مقصوصة */
+function vpReset(){const m=document.querySelector('meta[name=viewport]');if(!m||m.dataset.o!==undefined)return;const c=m.getAttribute('content');m.setAttribute('content',c.replace(/,\s*maximum-scale=[^,]*/,'')+', maximum-scale=1');setTimeout(()=>m.setAttribute('content',c),400)}
+addEventListener('orientationchange',vpReset);try{screen.orientation&&screen.orientation.addEventListener('change',vpReset)}catch(e){}
 function prt(sec){if(typeof sec!=='string')sec='';const h=pdfHtml(sec),dk=!!S.set.pdfDark;
  let el=$('pdf');if(!el){el=document.createElement('div');el.id='pdf';document.body.appendChild(el)}
  el.className=dk?'dk':'';el.innerHTML=h;document.body.classList.add('pp');document.body.classList.toggle('pdk',dk);
