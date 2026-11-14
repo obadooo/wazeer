@@ -1230,7 +1230,7 @@ function fzZoom(z,cx,cy,pre){if(!fsEl())return;z=fzClamp(z);const old=FZ;if(Math
 function fzSet(z){fzZoom(z)}
 /* الحركة الناعمة أثناء القرص/العجلة */
 let G=null,GT=null;
-function gBegin(cx,cy){if(G)return;const de=document.documentElement,vw=de.clientWidth,ox=(fzRtl()?(de.scrollWidth-vw+scrollX):scrollX)+cx,oy=scrollY+cy;
+function gBegin(cx,cy){if(G)return;const de=document.documentElement,vw=de.clientWidth,ox=scrollX+cx,oy=scrollY+cy;
  G={z:FZ,cx,cy,raf:0};de.style.transformOrigin=ox+'px '+oy+'px';de.style.willChange='transform'}
 function gSet(z){if(!G)return;z=fzClamp(z);if(Math.abs(z-G.z)/G.z<0.004&&z!==1)return;G.z=z;if(!G.raf)G.raf=requestAnimationFrame(()=>{if(!G)return;G.raf=0;const k=G.z/FZ;document.documentElement.style.transform=Math.abs(k-1)<0.001?'':'scale('+k+')'})}
 function gClear(){const de=document.documentElement;de.style.transform='';de.style.transformOrigin='';de.style.willChange=''}
