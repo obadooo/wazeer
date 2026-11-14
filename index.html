@@ -1212,8 +1212,8 @@ const fzClamp=z=>{z=Math.min(FZMAX,Math.max(FZMIN,z));return Math.abs(z-1)<0.03?
 const fzRtl=()=>getComputedStyle(document.documentElement).direction==='rtl';
 function fzApply(){const on=!!fsEl();if(!on){FZ=1;gCancel()}FZV=[innerWidth,innerHeight];fzBody();const c=$('fzc');if(c)c.remove();
  document.documentElement.style.touchAction=on?'pan-x pan-y':'';
- if(on&&!FZON){document.addEventListener('wheel',fzWheel,{passive:false,capture:true});FZON=true}
- else if(!on&&FZON){document.removeEventListener('wheel',fzWheel,{capture:true});FZON=false}
+ if(on&&!FZON){document.addEventListener('wheel',fzWheel,{passive:false,capture:true});document.addEventListener('touchmove',fzTMove,{passive:false,capture:true});FZON=true}
+ else if(!on&&FZON){document.removeEventListener('wheel',fzWheel,{capture:true});document.removeEventListener('touchmove',fzTMove,{capture:true});FZON=false}
  fzDone()}
 function fzDone(){clearTimeout(FZT);FZT=setTimeout(()=>{try{window.dispatchEvent(new Event('resize'));if($('whc')&&!WH.spin)whDraw(WH.rot)}catch(e){}},120)}
 /* اعتماد الحجم حول نقطة (cx,cy) مع إبقاء ما تحتها في مكانه */
@@ -1232,7 +1232,7 @@ function fzSet(z){fzZoom(z)}
 let G=null,GT=null;
 function gBegin(cx,cy){if(G)return;const de=document.documentElement,vw=de.clientWidth,ox=(fzRtl()?(de.scrollWidth-vw+scrollX):scrollX)+cx,oy=scrollY+cy;
  G={z:FZ,cx,cy,raf:0};de.style.transformOrigin=ox+'px '+oy+'px';de.style.willChange='transform'}
-function gSet(z){if(!G)return;G.z=fzClamp(z);if(!G.raf)G.raf=requestAnimationFrame(()=>{if(!G)return;G.raf=0;const k=G.z/FZ;document.documentElement.style.transform=Math.abs(k-1)<0.001?'':'scale('+k+')'})}
+function gSet(z){if(!G)return;z=fzClamp(z);if(Math.abs(z-G.z)/G.z<0.004&&z!==1)return;G.z=z;if(!G.raf)G.raf=requestAnimationFrame(()=>{if(!G)return;G.raf=0;const k=G.z/FZ;document.documentElement.style.transform=Math.abs(k-1)<0.001?'':'scale('+k+')'})}
 function gClear(){const de=document.documentElement;de.style.transform='';de.style.transformOrigin='';de.style.willChange=''}
 function gEnd(){clearTimeout(GT);if(!G)return;const g=G;G=null;if(g.raf)cancelAnimationFrame(g.raf);document.documentElement.style.transform=Math.abs(g.z/FZ-1)<0.001?'':'scale('+(g.z/FZ)+')';fzZoom(g.z,g.cx,g.cy,gClear)}
 function gCancel(){clearTimeout(GT);if(G&&G.raf)cancelAnimationFrame(G.raf);G=null;gClear()}
@@ -1240,11 +1240,12 @@ document.addEventListener('keydown',e=>{if(!fsEl()||!(e.ctrlKey||e.metaKey))retu
  if(k==='='||k==='+'||e.code==='NumpadAdd'){e.preventDefault();fzZoom(FZ*1.1)}else if(k==='-'||k==='_'||e.code==='NumpadSubtract'){e.preventDefault();fzZoom(FZ/1.1)}else if(k==='0'||e.code==='Numpad0'){e.preventDefault();fzZoom(1)}},true);
 /* Ctrl + عجلة الفأرة / قرص لوحة اللمس (يُسجَّل فقط أثناء ملء الشاشة حتى لا يبطئ التمرير العادي) */
 function fzWheel(e){if(!fsEl()||!e.ctrlKey)return;e.preventDefault();let d=e.deltaY;if(e.deltaMode===1)d*=16;d=Math.max(-50,Math.min(50,d));
- if(!G)gBegin(e.clientX,e.clientY);gSet(G.z*Math.exp(-d*0.0012));clearTimeout(GT);GT=setTimeout(gEnd,160)}
+ if(!G)gBegin(e.clientX,e.clientY);G.w=(G.w||G.z)*Math.exp(-d*0.0008);G.w=fzClamp(G.w);gSet(G.w);clearTimeout(GT);GT=setTimeout(gEnd,320)}
 /* القرص بإصبعين: المستمعات غير معطِّلة للتمرير (passive)، ومنع زووم المتصفح يتم عبر touch-action أثناء ملء الشاشة */
 let PZ=null;const tDist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY),tMid=t=>[(t[0].clientX+t[1].clientX)/2,(t[0].clientY+t[1].clientY)/2];
 document.addEventListener('touchstart',e=>{if(!fsEl()||e.touches.length!==2)return;const m=tMid(e.touches);PZ={d:tDist(e.touches)||1,z:FZ};gBegin(m[0],m[1])},{passive:true,capture:true});
-document.addEventListener('touchmove',e=>{if(!PZ||!fsEl()||e.touches.length!==2)return;gSet(PZ.z*tDist(e.touches)/PZ.d)},{passive:true,capture:true});
+/* أثناء القرص بإصبعين نوقف تمرير الصفحة حتى لا تهتز، ونخفف الحساسية قليلاً ليسهل اختيار الحجم بدقة */
+function fzTMove(e){if(!PZ||!fsEl()||e.touches.length!==2)return;e.preventDefault();gSet(PZ.z*Math.pow(tDist(e.touches)/PZ.d,0.75))}
 const pzEnd=e=>{if(PZ&&(!e.touches||e.touches.length<2)){PZ=null;gEnd()}};document.addEventListener('touchend',pzEnd,{capture:true});document.addEventListener('touchcancel',pzEnd,{capture:true});
 ['gesturestart','gesturechange','gestureend'].forEach(n=>document.addEventListener(n,e=>{if(fsEl())e.preventDefault()},{passive:false}));
 /* اللابتوب فقط: سحب النافذة لتغيير حجمها يرجّع الحجم الطبيعي. في الأجهزة اللمسية لا يرجع إلا بالإصبعين */
