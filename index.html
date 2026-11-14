@@ -1312,16 +1312,25 @@ function pvA4(on){const m=document.querySelector('meta[name=viewport]');if(!m)re
 function goPrint(done){pvA4(1);let fin=()=>{removeEventListener('afterprint',fin);fin=()=>{};pvA4(0);if(done)done()};addEventListener('afterprint',fin);setTimeout(()=>{window.print();
  /* الآيباد والآيفون لا يرسلان دائماً حدث انتهاء الطباعة: أول لمسة بعد الطباعة ترجع عرض الصفحة الطبيعي */
  setTimeout(()=>{const f=()=>{removeEventListener('pointerdown',f,true);fin()};addEventListener('pointerdown',f,true)},1500)},350)}
-/* عند تدوير الآيباد/الجوال: بعض المتصفحات في iOS تبقي عرض الصفحة القديم (فتبقى الصفحة مقصوصة أو بنصف الشاشة).
-   بعد التدوير نقارن عرض الصفحة بعرض الشاشة في الاتجاه الجديد، وإذا اختلفا نعيد إنشاء إعداد العرض ليُعاد ترتيب الصفحة */
+/* عند تدوير الآيباد/الآيفون: متصفحات iOS (سفاري وكروم) أحياناً تُبقي عرض الصفحة القديم بعد التدوير، فتظهر الصفحة بنصف الشاشة أو مقصوصة.
+   الحل: بعد التدوير أو تغيّر حجم النافذة نقارن عرض الصفحة بعرض النافذة الفعلي، وإذا اختلفا نثبّت عرض الصفحة على عرض النافذة صراحةً */
+const IOSD=/iP(hone|ad|od)/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
 function vpExpect(){const t=(screen.orientation&&screen.orientation.type)||'',ls=t?t.startsWith('landscape'):Math.abs(window.orientation||0)===90,a=Math.min(screen.width,screen.height),b=Math.max(screen.width,screen.height);return ls?b:a}
-function vpFix(){const m=document.querySelector('meta[name=viewport]');if(!m||m.dataset.o!==undefined)return;
- const cw=document.documentElement.clientWidth,ex=vpExpect();
- if(Math.abs(cw-ex)<=4)return;
- const n=document.createElement('meta');n.name='viewport';n.content='width=device-width, initial-scale=1, viewport-fit=cover';m.parentNode.replaceChild(n,m);
- setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},50)}
-function vpRot(){[250,700,1400].forEach(t=>setTimeout(vpFix,t))}
+function vpTarget(){const o=window.outerWidth;return(o>=300&&o<=vpExpect()+4)?o:vpExpect()}
+function vpFix(){if(!IOSD)return;const m=document.querySelector('meta[name=viewport]');if(!m||m.dataset.o!==undefined)return;
+ const cw=document.documentElement.clientWidth,t=vpTarget();if(Math.abs(cw-t)<=4)return;
+ m.setAttribute('content','width='+t+', initial-scale=1, viewport-fit=cover');
+ setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},80)}
+let vpT=null;function vpRot(){[200,600,1200,2200].forEach(t=>setTimeout(vpFix,t))}
 addEventListener('orientationchange',vpRot);try{screen.orientation&&screen.orientation.addEventListener('change',vpRot)}catch(e){}
+addEventListener('resize',e=>{if(!e.isTrusted||!IOSD)return;clearTimeout(vpT);vpT=setTimeout(vpFix,300)});
+if(IOSD)setTimeout(vpFix,800);
+/* الخروج من ملء الشاشة في الآيباد قد يُرجع عرض الصفحة القديم: نعيد الفحص بعده وعند الرجوع للصفحة */
+['fullscreenchange','webkitfullscreenchange'].forEach(n=>document.addEventListener(n,()=>{if(IOSD)vpRot()}));addEventListener('pageshow',()=>{if(IOSD)vpRot()});document.addEventListener('visibilitychange',()=>{if(IOSD&&document.visibilityState==='visible')vpRot()});
+/* أداة تشخيص: افتح الرابط مع ?diag=1 لعرض مقاسات الشاشة والصفحة */
+if(/[?&]diag=1/.test(location.search))(()=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:6px;bottom:6px;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:12px/1.5 monospace;padding:8px 10px;border-radius:8px;direction:ltr;text-align:left;pointer-events:none';document.body.appendChild(d);
+ const u=()=>{const v=window.visualViewport,m=document.querySelector('meta[name=viewport]');d.textContent='inner '+innerWidth+'x'+innerHeight+' | client '+document.documentElement.clientWidth+' | outer '+outerWidth+'x'+outerHeight+' | screen '+screen.width+'x'+screen.height+' | vv '+(v?Math.round(v.width)+'x'+Math.round(v.height)+' s'+v.scale.toFixed(2):'-')+' | orient '+((screen.orientation&&screen.orientation.type)||window.orientation)+' | expect '+vpExpect()+' target '+vpTarget()+' | iOS '+IOSD+' | meta '+(m&&m.content)};
+ u();addEventListener('resize',u);addEventListener('orientationchange',()=>setTimeout(u,500));setInterval(u,1000)})();
 function prt(sec){if(typeof sec!=='string')sec='';const h=pdfHtml(sec),dk=!!S.set.pdfDark;
  let el=$('pdf');if(!el){el=document.createElement('div');el.id='pdf';document.body.appendChild(el)}
  el.className=dk?'dk':'';el.innerHTML=h;document.body.classList.add('pp');document.body.classList.toggle('pdk',dk);
